@@ -33,21 +33,17 @@ jobs:
       - name: Pruebas unitarias (Vitest)
         run: npm run test
 
-      - name: ClamAV - Check de seguridad
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Arrancar ClamAV
+      - name: Arrancar ClamAV Daemon
         uses: toblux/start-clamd-github-action@v0.2.1
         with:
           port: 3310
 
-      - name: Escanear
+      - name: Escanear código (Malware Check)
         run: |
           sudo apt-get update && sudo apt-get install -y clamav-daemon
           clamdscan --stream --port 3310 .
 
-build-and-push-docker:
+  build-and-push-docker:
     needs: ci-and-security    
     runs-on: ubuntu-latest
     strategy:
@@ -69,8 +65,8 @@ build-and-push-docker:
           file: ./Dockerfile.${{ matrix.os_variant }}
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/cicd-ap181-project:${{ matrix.os_variant }}
-          
-    deploy-and-monitor:
+
+  deploy-and-monitor:
     needs: build-and-push-docker
     runs-on: ubuntu-latest
     steps:
@@ -81,23 +77,17 @@ build-and-push-docker:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            # Login en Docker Hub (para poder bajar tu imagen privada si lo fuera)
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-            
-            # Parar el contenedor viejo (si existe) para liberar el puerto 80
             docker stop cicd-ap181-project || true
             docker rm cicd-ap181-project || true
-            
-            # Bajar la última versión que acabamos de subir al Hub
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/cicd-ap181-project:alpine
-            
-            # Arrancar el nuevo contenedor
+            # Mapeamos el puerto 8888 del VPS al 80 del contenedor
             docker run -d --name cicd-ap181-project -p 8888:80 ${{ secrets.DOCKERHUB_USERNAME }}/cicd-ap181-project:alpine
+
       - name: Verificación de estado (Health Check)
         run: |
           echo "Esperando a que el servidor responda..."
           sleep 10
-          # Intentamos conectar a la IP del servidor. Si no responde con un 200 OK, el pipeline fallará.
           curl -f http://${{ secrets.SSH_HOST }}:8888 || exit 1
           echo "¡El despliegue es correcto y la web está online!"
     
@@ -109,7 +99,7 @@ build-and-push-docker:
           server_port: 465
           username: ${{ secrets.MAIL_USER }}
           password: ${{ secrets.MAIL_PASS }}
-          subject: "Estado del Pipeline: ${{ job.status }}"
+          subject: "Estado del Proyecto ap181: ${{ job.status }}"
           to: aleshit2021@gmail.com
           from: GitHub Actions
           body: "El pipeline ha finalizado con estado: ${{ job.status }}. Revisa los logs en GitHub."
