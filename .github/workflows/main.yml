@@ -34,9 +34,20 @@ jobs:
         run: npm run test
 
       - name: ClamAV - Check de seguridad
-        uses: azure/clamav-action@v1 
+    steps:
+      - uses: actions/checkout@v4
 
-  build-and-push-docker:
+      - name: Arrancar ClamAV
+        uses: toblux/start-clamd-github-action@v0.2.1
+        with:
+          port: 3310
+
+      - name: Escanear
+        run: |
+          sudo apt-get update && sudo apt-get install -y clamav-daemon
+          clamdscan --stream --port 3310 .
+
+build-and-push-docker:
     needs: ci-and-security    
     runs-on: ubuntu-latest
     strategy:
