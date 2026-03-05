@@ -69,8 +69,8 @@ build-and-push-docker:
           file: ./Dockerfile.${{ matrix.os_variant }}
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/cicd-ap181-project:${{ matrix.os_variant }}
-
-  deploy-and-monitor:
+          
+    deploy-and-monitor:
     needs: build-and-push-docker
     runs-on: ubuntu-latest
     steps:
