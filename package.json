@@ -1,0 +1,19 @@
+{
+  "name": "cicd-project",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test": "vitest run",
+    "lint": "eslint src/**/*.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "eslint": "^10.0.2",
+    "vite": "^7.3.1",
+    "vitest": "^4.0.18"
+  }
+}

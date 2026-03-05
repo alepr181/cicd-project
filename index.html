@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista de la compra</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>Mi Lista</h1>
+            <span class="badge">v1.0.0</span>
+        </header>
+
+        <div class="input-group">
+            <input type="text" id="item-input" placeholder="Manzanas..." maxlength="20">
+            <button id="add-btn">Añadir</button>
+        </div>
+
+        <ul id="list-container">
+            </ul>
+
+        <div id="message" class="hidden"></div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>
