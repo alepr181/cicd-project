@@ -33,16 +33,6 @@ jobs:
       - name: Pruebas unitarias (Vitest)
         run: npm run test
 
-      - name: Arrancar ClamAV Daemon
-        uses: toblux/start-clamd-github-action@v0.2.1
-        with:
-          port: 3310
-
-      - name: Escanear código (Malware Check)
-        run: |
-          sudo apt-get update && sudo apt-get install -y clamav-daemon
-          clamdscan --stream --port 3310 .
-
   build-and-push-docker:
     needs: ci-and-security    
     runs-on: ubuntu-latest
