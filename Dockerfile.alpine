@@ -1,0 +1,20 @@
+# Construcción del artefacto con NODE.JS
+
+
+FROM node:22-alpine AS build-step
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
+# Manda el artefacto a un servidor web (nginx)
+
+FROM nginx:stable-alpine
+LABEL maintainer="aleshit2021@gmail.com"
+ENV APP_ENV=production
+RUN rm -rf /var/cache/apk/*
+COPY --from=build-step /app/dist /usr/share/nginx/html
+VOLUME /var/cache/nginx
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

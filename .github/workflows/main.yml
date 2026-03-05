@@ -1,0 +1,104 @@
+name: "Proyecto CI/CD ap181"
+
+on:
+  push:
+    branches: [ main ]           
+  schedule:
+    - cron: '0 0 * * 1'           
+  workflow_dispatch:            
+    inputs:
+      deploy_env:
+        description: 'Entorno de despliegue'
+        required: true
+        default: 'production'
+  repository_dispatch:        
+    types: [external_trigger]
+
+jobs:
+  ci-and-security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Instalación de Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Linter
+        run: |
+          npm install
+          npm run lint
+
+      - name: Pruebas unitarias (Vitest)
+        run: npm run test
+
+      - name: ClamAV - Check de seguridad
+        uses: azure/clamav-action@v1 
+
+  build-and-push-docker:
+    needs: ci-and-security    
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os_variant: [debian, alpine]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Iniciamos sesión en dockerhub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Se construye y sube la imagen
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.${{ matrix.os_variant }}
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/cicd-ap181-project:${{ matrix.os_variant }}
+
+  deploy-and-monitor:
+    needs: build-and-push-docker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Despliegue al VPS
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            # Login en Docker Hub (para poder bajar tu imagen privada si lo fuera)
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+            
+            # Parar el contenedor viejo (si existe) para liberar el puerto 80
+            docker stop cicd-ap181-project || true
+            docker rm cicd-ap181-project || true
+            
+            # Bajar la última versión que acabamos de subir al Hub
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/cicd-ap181-project:alpine
+            
+            # Arrancar el nuevo contenedor
+            docker run -d --name cicd-ap181-project -p 8888:80 ${{ secrets.DOCKERHUB_USERNAME }}/cicd-ap181-project:alpine
+      - name: Verificación de estado (Health Check)
+        run: |
+          echo "Esperando a que el servidor responda..."
+          sleep 10
+          # Intentamos conectar a la IP del servidor. Si no responde con un 200 OK, el pipeline fallará.
+          curl -f http://${{ secrets.SSH_HOST }}:8888 || exit 1
+          echo "¡El despliegue es correcto y la web está online!"
+    
+      - name: Envío del email de éxito / error
+        if: always()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.MAIL_USER }}
+          password: ${{ secrets.MAIL_PASS }}
+          subject: "Estado del Pipeline: ${{ job.status }}"
+          to: aleshit2021@gmail.com
+          from: GitHub Actions
+          body: "El pipeline ha finalizado con estado: ${{ job.status }}. Revisa los logs en GitHub."
