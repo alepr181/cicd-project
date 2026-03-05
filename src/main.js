@@ -17,7 +17,7 @@ const addItem = () => {
         input.value = '';
         msg.classList.add('hidden');
     } else {
-        msg.textContent = "Mínimo 2 caracteres, máximo 20.";
+        msg.textContent = "Mínimo 2 caracteres, máximo 20..";
         msg.classList.remove('hidden');
     }
 };
